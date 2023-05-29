@@ -26,6 +26,9 @@ random agent.
 """
 
 import time
+
+import sys
+sys.path.insert(0, '/home/abc/Documents/aa203/AA203Project')
 import flappy_bird_gym
 
 
@@ -57,12 +60,15 @@ def simple_control(obs):
         return action
 
 def mpc_control(obs, N):
-    x0, y0, v0 = obs
+    x0= obs[0,0]
+    y0= obs[1,0]
+    v0 = obs[2,0]
     Q = np.eye(1)
     R = np.eye(1)
     M = 1000 # big M parameters
     n = 1
     m = 1
+    c = 10
     Y = cvx.Variable((N+1,1))
     X = cvx.Variable((N+1,1))
     V = cvx.Variable((N+1,1))
@@ -83,14 +89,21 @@ def mpc_control(obs, N):
         constraints.append( V[k+1] - V[k] - M*U[k] <= PLAYER_ACC_Y )
         # constraints.append( Y[k+1] <= 400)
         # constraints.append( Y[k+1] >= -400)
+
+
         constraints.append( V[k+1] <= PLAYER_MAX_VEL_Y)
-        # constraints.append( V[k+1] >= PLAYER_MIN_VEL_Y)
-        # cost_terms.append( cvx.norm(Y[k], 'inf') )
+        
+        # cost_terms.append( cvx.quad_form(Y[k], np.eye(1)))
+        # cost_terms.append( Y[k]**2 )
 
-    cost_terms.append( cvx.norm(Y[N], 'inf') )
+        cost_terms.append( U[k] )
+        
 
-    # constraints.append( Y[N] <= 0.8*np.abs(y0))
-    # constraints.append( Y[N] >= -0.8*np.abs(y0))
+    cost_terms.append( cvx.norm(Y[N],'inf') )
+    # cost_terms.append( cvx.norm(V[N],'inf') )
+
+    constraints.append( Y[N] <= 0.8*np.abs(y0))
+    constraints.append( Y[N] >= -0.8*np.abs(y0))
 
     
 
@@ -125,20 +138,22 @@ def main():
     score = 0
     env._normalize_obs = False
     obs = env.reset()
+    data = []
     while True:
         env.render()
 
         # action = simple_control(obs)
-        action = mpc_control(obs, 10)
+        action = mpc_control(obs, 5)
 
         # Processing:
         obs, reward, done, info = env.step(action)
 
         score += reward
+        data.append((obs, action, reward))
         print(f"Obs: {obs}\n"
               f"Score: {score}\n"
-              f"Info: {info}")
-
+              f"Info: {info}\n"
+              f"Data: {data[-1]}")
         # time.sleep(1 / 30)
         # time.sleep(1 / 10)
 
