@@ -183,7 +183,7 @@ def main(filename):
 
     env.close()
 
-    if info['score'] > 15:
+    if info['score'] > 50:
         print("adding to csv")
 
         # Open the CSV file in write mode
@@ -195,7 +195,7 @@ def main(filename):
                 writer.writerow(row)
 
 if __name__ == "__main__":
-    loops = 100
+    loops = 1000
     counter = 0
 
     # Get the current date and time
