@@ -60,29 +60,53 @@ def simple_control(obs):
         return action
 
 def mpc_control(obs, N):
-    x0= obs[0,0]
-    y0= obs[1,0]
+    x0 = obs[0,0]
+    x1 = obs[0,1]
+    y0 = obs[1,0]
+    y1 = obs[1,1]
     v0 = obs[2,0]
+
     Q = np.eye(1)
     R = np.eye(1)
     M = 1000 # big M parameters
     n = 1
     m = 1
-    c = 10
+
+    Y_LOW = max([y0,y1]) + 100
+    Y_HIGH = min([y0,y1]) - 100
+    PIPE_GAP = 100
+
+    Yub = np.zeros((N+1,1))
+    Ylb = np.zeros((N+1,1))
+    X = np.zeros((N+1,1))
+
     Y = cvx.Variable((N+1,1))
-    X = cvx.Variable((N+1,1))
     V = cvx.Variable((N+1,1))
     U = cvx.Variable((N,1), boolean = True)
 
     cost_terms = []
     constraints = []
 
-    constraints.append( Y[0] == y0 )
+    constraints.append( Y[0] == 0 )
     constraints.append( V[0] == v0 )
+    for k in range(N+1):
+        # parameters
+        X[k] = k*-PIPE_VEL_X
+        if x0 - X[k] <= PIPE_WIDTH and x0 - X[k] >= 0:
+            Yub[k] = y0 - PIPE_GAP/2
+            Ylb[k] = y0 + PIPE_GAP/2
+        elif x1 - X[k] <= PIPE_WIDTH and x1 - X[k] >= 0:
+            Yub[k] = y1 - PIPE_GAP/2
+            Ylb[k] = y1 + PIPE_GAP/2
+        else:
+            Yub[k] = Y_HIGH
+            Ylb[k] = Y_LOW
+        constraints.append( Y[k] >= Yub[k] )
+        constraints.append( Y[k] <= Ylb[k] )
+
     for k in range(N):
         # dynamics
-        constraints.append( Y[k] - V[k] == Y[k+1] )
-        constraints.append( X[k] + PIPE_VEL_X == X[k+1])
+        constraints.append( Y[k] + V[k] == Y[k+1] )
         constraints.append( -V[k+1] + M*U[k] <= -PLAYER_FLAP_ACC + M )
         constraints.append( V[k+1] + M*U[k] <= PLAYER_FLAP_ACC + M )
         constraints.append( -V[k+1] + V[k] - M*U[k] <= -PLAYER_ACC_Y )
@@ -97,13 +121,15 @@ def mpc_control(obs, N):
         # cost_terms.append( Y[k]**2 )
 
         cost_terms.append( U[k] )
-        
+        # cost_terms.append( cvx.norm(Y[k],'inf') )
 
-    cost_terms.append( cvx.norm(Y[N],'inf') )
+        
+    # cost_terms.append( U[N] )
+    # cost_terms.append( cvx.norm(Y[N],'inf') )
     # cost_terms.append( cvx.norm(V[N],'inf') )
 
-    constraints.append( Y[N] <= 0.8*np.abs(y0))
-    constraints.append( Y[N] >= -0.8*np.abs(y0))
+    # constraints.append( Y[N] <= 0.8*np.abs(y0))
+    # constraints.append( Y[N] >= -0.8*np.abs(y0))
 
     
 
@@ -114,18 +140,33 @@ def mpc_control(obs, N):
 
     if prob.status == 'infeasible':
         print(prob.status)
-        return 0
+        return 0, (np.zeros((N+1,1)), Yub, Ylb)
     else:
-        return U.value[0]
+        return U.value[0], (Y.value, Yub, Ylb)
 
-def plot_scene():
-    plt.plot([0,BASE_WIDTH,BASE_WIDTH,0,0],
-             [0,0,BASE_HEIGHT,BASE_HEIGHT,0])
-    plt.plot([0,BACKGROUND_WIDTH,BACKGROUND_WIDTH,0,0],
-            [0,0,BACKGROUND_HEIGHT,BACKGROUND_HEIGHT,0])
-    center = [BASE_WIDTH/2,BASE_HEIGHT/2]
-    center_x, center_y = center
-    plt.plot
+def plot_scene(env, obs, Y, N):
+    screen_width, screen_height = env._screen_size
+    # plt.plot([0,screen_width,screen_width,0,0],
+    #          y-[0,0,-screen_height,-screen_height,0])
+    x = env._game.player_x
+    y = env._game.player_y
+    plt.plot(-x,y, marker = '+')
+    plt.plot(-x+screen_width,y-screen_height, marker = '+')
+    
+    plt.plot(0,0, marker = 'o')
+    for ob in obs.T:
+        p_x = ob[0]
+        p_y = -ob[1]
+        p_xs = [-PIPE_WIDTH+p_x, p_x]
+        p_ly = [p_y - env._pipe_gap/2, p_y - env._pipe_gap/2]
+        p_uy = [p_y + env._pipe_gap/2, p_y + env._pipe_gap/2]
+        plt.plot(p_xs, p_ly, marker = '.')
+        plt.plot(p_xs, p_uy, marker = '.')
+
+    x_move = np.arange(0, -PIPE_VEL_X*(N+1), -PIPE_VEL_X)
+    plt.plot(x_move, Y[0])
+    plt.plot(x_move, -Y[2])
+    plt.plot(x_move, -Y[1])
     plt.show()
 
 
@@ -139,14 +180,18 @@ def main():
     env._normalize_obs = False
     obs = env.reset()
     data = []
+    N = 15 # for MPC
     while True:
         env.render()
 
         # action = simple_control(obs)
-        action = mpc_control(obs, 5)
+        action, Ys = mpc_control(obs, N)
+        if action == 1:
+            plot_scene(env, obs, Ys, N)
 
         # Processing:
         obs, reward, done, info = env.step(action)
+
 
         score += reward
         data.append((obs, action, reward))
@@ -156,7 +201,6 @@ def main():
               f"Data: {data[-1]}")
         # time.sleep(1 / 30)
         # time.sleep(1 / 10)
-
 
         if done:
             env.render()
