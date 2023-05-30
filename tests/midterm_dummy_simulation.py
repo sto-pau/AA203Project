@@ -36,6 +36,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import cvxpy as cvx
 
+import csv
+
 from flappy_bird_gym.envs.game_logic import * 
 
 
@@ -139,6 +141,9 @@ def main():
     env._normalize_obs = False
     obs = env.reset()
     data = []
+
+    filename = 'data.csv'
+
     while True:
         env.render()
 
@@ -180,6 +185,13 @@ def main():
 
     env.close()
 
+    # Open the CSV file in write mode
+    with open(filename, 'w', newline='') as file:
+        writer = csv.writer(file)
+
+        # Write each row of data to the CSV file
+        for row in data:
+            writer.writerow(row)
 
 if __name__ == "__main__":
     main()
