@@ -37,6 +37,7 @@ import numpy as np
 import cvxpy as cvx
 
 import csv
+import datetime
 
 from flappy_bird_gym.envs.game_logic import * 
 
@@ -142,8 +143,6 @@ def main():
     obs = env.reset()
     data = []
 
-    filename = 'data.csv'
-
     while True:
         env.render()
 
@@ -185,13 +184,26 @@ def main():
 
     env.close()
 
-    # Open the CSV file in write mode
-    with open(filename, 'w', newline='') as file:
-        writer = csv.writer(file)
+    if score > 1500:
 
-        # Write each row of data to the CSV file
-        for row in data:
-            writer.writerow(row)
+        # Get the current date and time
+        current_datetime = datetime.datetime.now()
+        datetime_str = current_datetime.strftime("d%dt%H%M%S")
+
+        # Create the file name with the date and time
+        filename = f"data_{score}_{datetime_str}.csv"
+
+        # Open the CSV file in write mode
+        with open(filename, 'w', newline='') as file:
+            writer = csv.writer(file)
+
+            # Write each row of data to the CSV file
+            for row in data:
+                writer.writerow(row)
 
 if __name__ == "__main__":
-    main()
+    loops = 100
+    counter = 0
+    while counter < loops:
+        main()
+        counter+=1
