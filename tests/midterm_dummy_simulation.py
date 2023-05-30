@@ -133,7 +133,7 @@ def plot_scene():
 
 
 
-def main():
+def main(filename):
     # env = gym.make("flappy_bird_gym:FlappyBird-v0")
     # env = flappy_bird_gym.make("FlappyBird-rgb-v0")
     env = flappy_bird_gym.make("FlappyBird-v0")
@@ -176,7 +176,6 @@ def main():
         # time.sleep(1 / 30)
         #time.sleep(1 / 10)
 
-
         if done:
             env.render()
             time.sleep(0.5)
@@ -184,14 +183,8 @@ def main():
 
     env.close()
 
-    if score > 1500:
-
-        # Get the current date and time
-        current_datetime = datetime.datetime.now()
-        datetime_str = current_datetime.strftime("d%dt%H%M%S")
-
-        # Create the file name with the date and time
-        filename = f"data_{score}_{datetime_str}.csv"
+    if info['score'] > 15:
+        print("adding to csv")
 
         # Open the CSV file in write mode
         with open(filename, 'w', newline='') as file:
@@ -204,6 +197,14 @@ def main():
 if __name__ == "__main__":
     loops = 100
     counter = 0
+
+    # Get the current date and time
+    current_datetime = datetime.datetime.now()
+    datetime_str = current_datetime.strftime("d%dt%H%M%S")
+
+    # Create the file name with the date and time
+    filename = f"data_{datetime_str}.csv"
+
     while counter < loops:
-        main()
+        main(filename)
         counter+=1
