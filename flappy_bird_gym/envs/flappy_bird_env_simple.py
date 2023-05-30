@@ -68,7 +68,7 @@ class FlappyBirdEnvSimple(gym.Env):
 
     def __init__(self,
                  screen_size: Tuple[int, int] = (288, 512),
-                 normalize_obs: bool = True,
+                 normalize_obs: bool = False,
                  pipe_gap: int = 100,
                  bird_color: str = "yellow",
                  pipe_color: str = "green",

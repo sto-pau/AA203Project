@@ -28,7 +28,7 @@ random agent.
 import time
 
 import sys
-sys.path.insert(0, '/home/abc/Documents/aa203/AA203Project')
+sys.path.insert(0, '/home/paulalinux20/Optimal_Control_Project/flappy-bird-gym')
 import flappy_bird_gym
 
 
@@ -50,14 +50,14 @@ def simple_control(obs):
         '''
         0 means do nothing, 1 means flap
         '''
-        c = -0.05 #from paper
+        c = 288 * -0.09 #from paper -0.05
 
-        if obs[1] < c:
+        if obs[1][0] < c:
             action = 1
         else:
             action = 0  
         
-        return action
+        return np.array([action])
 
 def mpc_control(obs, N):
     x0= obs[0,0]
@@ -142,20 +142,35 @@ def main():
     while True:
         env.render()
 
-        # action = simple_control(obs)
-        action = mpc_control(obs, 5)
+        action = simple_control(obs)
+        #action = mpc_control(obs, 5)
 
         # Processing:
         obs, reward, done, info = env.step(action)
 
         score += reward
-        data.append((obs, action, reward))
+
+        obs_col = len(obs[0])
+        if obs_col < 2:
+            pad = np.zeros((len(obs),1))
+            obs = np.concatenate((obs,pad), axis=1)
+        flat_obs = obs.flatten()
+
+        print(f"Obs: {obs}\n"
+            f"action{action}\n"
+            f"reward{reward}\n")
+        
+        #data.append(np.concatenate([flat_obs[0:-1], action]))
+        data.append(np.append((np.concatenate([flat_obs[0:-1], action])), reward))
+        #flattened_data = np.concatenate([np.array(data[-1][0]).flatten(), np.array(data[-1][1]).flatten(), np.array(data[-1][2])])
+        #flattened = data[-1].flatten()
+
         print(f"Obs: {obs}\n"
               f"Score: {score}\n"
               f"Info: {info}\n"
-              f"Data: {data[-1]}")
+              f"Data: {data[-1]}\n\n")
         # time.sleep(1 / 30)
-        # time.sleep(1 / 10)
+        #time.sleep(1 / 10)
 
 
         if done:
