@@ -186,7 +186,7 @@ def readCSV(path):
     df = pd.read_csv(path)     
     return df
 
-def trainQ():
+def trainQ(shuffled = True):
     # Define the state and action spaces
     state_dim = 5
     action_dim = 2
@@ -198,10 +198,10 @@ def trainQ():
     #Read in training data into a data frame
     #data should be in the same folder, input to function should be target file name and return file name
     save_path = '/home/paulalinux20/Optimal_Control_Project/flappy-bird-gym/data/'
-    file_name = 'data_d29t184122_train'   
-    shuffled = True 
-    #file_name = 'data_d29t184122'   
-    # shuffled = False 
+    if shuffled:
+        file_name = 'data_d29t184122_train'   
+    else:
+        file_name = 'data_d29t184122'   
     path = save_path + file_name + '.csv'
 
     loops = 1    
@@ -210,7 +210,6 @@ def trainQ():
 
         df = readCSV(path) #obtain the dataset and the variables from csv file 
         #x0,x1,y0,y1,v,a,r
-
 
         if not shuffled:
 
@@ -254,12 +253,12 @@ def trainQ():
         print("training loop #" + str(loop_through_data) + " done")
         
     # to save    
-    agent.save_agent('agent_more.pkl')
+    agent.save_agent('agent_more_not.pkl')
     # load
-    q_agent = QLearningAgent.load_agent('agent_more.pkl')    
+    q_agent = QLearningAgent.load_agent('agent_more_not.pkl')    
     return q_agent
 
-def RLmain(q_agent):    
+def RLmain(q_agent: QLearningAgent, train=False):    
 
     env = flappy_bird_gym.make("FlappyBird-v0")
 
@@ -268,6 +267,9 @@ def RLmain(q_agent):
     obs = env.reset()
     flat_obs, state = getState(obs)
     data = []
+
+    #needed if training
+    next_state = state
 
     while True:
         env.render()
@@ -285,6 +287,22 @@ def RLmain(q_agent):
         #if action is an int, it must be put into a 
         data.append(np.append((np.concatenate([flat_obs[0:-1], np.array([action])])), reward))
 
+        if train: #error here
+            q_values = q_agent.Q.predict(state)
+            print("passed predict: ", q_values)
+            next_q_values = q_agent.Q.predict(next_state)
+            td_target = reward + q_agent.gamma * np.max(next_q_values)
+            td_error = td_target - q_values[0][action]
+            target = q_values
+            target[0][action] += q_agent.alpha * td_error
+            q_agent.Q.update(state, target)
+            print("passed")
+            q_agent.update_Q(state, int(action), reward, next_state)
+            #q_agent.Q.update()
+        
+        #needed if training
+        next_state = state
+
         score += reward
         print(f"Obs: {obs}\n"
               f"Score: {score}\n"
@@ -299,20 +317,26 @@ def RLmain(q_agent):
             break
 
     env.close()
+    return q_agent
 
 if __name__ == "__main__":
 
-    #q_agent = trainQ()
-    q_agent = QLearningAgent.load_agent('agent_test.pkl')  
+    #for shuffled, need to run shuffle.py on the data file first
+    #for not shuffled, need to add header the raw csv file firt
+
+    # shuffled = False
+    # q_agent = trainQ(shuffled)
     
-    print("trained")
+    q_agent = QLearningAgent.load_agent('agent_test.pkl')  
 
     loops = 1000
     counter = 0
 
-    while counter < loops:
-        RLmain(q_agent)
-        counter+=1
+    #train while running y/n
+    train = True
 
-    #main()
+    while counter < loops:
+        RLmain(q_agent, train)
+        counter+=1
+        print("loop")
     
