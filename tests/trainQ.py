@@ -29,7 +29,7 @@ df = readCSV(path) #obtain the dataset and the variables from csv file
 #get initial state, action, reward
 initial_data= df.iloc[0]
 state = initial_data[:5]
-action = initial_data[-2]
+action = int(initial_data[-2])
 reward = initial_data[-1]
 
 #skip first row
@@ -38,19 +38,22 @@ first_row = True
 # train through all the rows in saved data one time
 for row in df.itertuples(): #options are iterrows(), values()
     if first_row:
+        first_row = False
         pass
     else:
         #index for all values
         next_state = row[:5]
+        state = np.array(state).reshape(-1,state_dim)
+        next_state = np.array(next_state).reshape(-1,state_dim)
         agent.update_Q(state, action, reward, next_state)
         state = row[:5]
-        action = row[-2]
+        action = int(row[-2])
         reward = row[-1]
    
 # to save    
-agent.save_agent('agent.pkl')
+agent.save_agent('agent_test.pkl')
 # load
-q_agent = QLearningAgent.load_agent('agent.pkl')     
+q_agent = QLearningAgent.load_agent('agent_test.pkl')     
 
 #
 # # Test the agent by following the greedy policy

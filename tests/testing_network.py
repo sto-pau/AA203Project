@@ -198,45 +198,68 @@ def trainQ():
     #Read in training data into a data frame
     #data should be in the same folder, input to function should be target file name and return file name
     save_path = '/home/paulalinux20/Optimal_Control_Project/flappy-bird-gym/data/'
-    #file_name = 'data_d29t184122'    
-    file_name = 'data_train'    
+    file_name = 'data_d29t184122_train'   
+    shuffled = True 
+    #file_name = 'data_d29t184122'   
+    # shuffled = False 
     path = save_path + file_name + '.csv'
 
-    df = readCSV(path) #obtain the dataset and the variables from csv file 
-    #x0,x1,y0,y1,v,a,r
+    loops = 1    
 
-    #get initial state, action, reward
-    initial_data= df.iloc[0]
-    state = initial_data[:5]
-    action = initial_data[-2]
-    reward = initial_data[-1]
+    for loop_through_data in range(loops):
 
-    #skip first row
-    first_row = True
+        df = readCSV(path) #obtain the dataset and the variables from csv file 
+        #x0,x1,y0,y1,v,a,r
 
-    # train through all the rows in saved data one time
-    for row in df.itertuples(): #options are iterrows(), values()
-        if first_row:
-            pass
+
+        if not shuffled:
+
+            #get initial state, action, reward
+            initial_data= df.iloc[0]
+            state = initial_data[:5]
+            action = int(initial_data[-2])
+            reward = initial_data[-1]
+
+            #skip first row
+            first_row = True
+
+            # train through all the rows in saved data one time
+            for row in df.itertuples(): #options are iterrows(), values()
+                if first_row:
+                    first_row = False
+                    pass
+                else:
+                    #index for all values
+                    next_state = row[:5]
+                    state = np.array(state).reshape(-1,state_dim)
+                    next_state = np.array(next_state).reshape(-1,state_dim)
+                    agent.update_Q(state, action, reward, next_state)
+                    state = row[:5]
+                    action = int(row[-2])
+                    reward = row[-1]
+                        
         else:
-            #index for all values
-            next_state = row[:5]
-            agent.update_Q(state, action, reward, next_state)
-            state = row[:5]
-            action = row[-2]
-            reward = row[-1]
-    
+            # train through all the rows in saved data one time
+            for row in df.itertuples(): #options are iterrows(), values()
+                #get values from csv file
+                state = row[:5]
+                action = int(row[6]) #row indecing is one off for pandas
+                reward = row[7]
+                next_state = row[-5:]
+                #for training the network, need to pass the states in the right shape
+                state = np.array(state).reshape(-1,state_dim)
+                next_state = np.array(next_state).reshape(-1,state_dim)
+                agent.update_Q(state, action, reward, next_state)
+        
+        print("training loop #" + str(loop_through_data) + " done")
+        
     # to save    
-    agent.save_agent('agent.pkl')
+    agent.save_agent('agent_more.pkl')
     # load
-    q_agent = QLearningAgent.load_agent('agent.pkl')    
+    q_agent = QLearningAgent.load_agent('agent_more.pkl')    
     return q_agent
 
-def RLmain():    
-
-    q_agent = trainQ()
-
-    print("trained")
+def RLmain(q_agent):    
 
     env = flappy_bird_gym.make("FlappyBird-v0")
 
@@ -257,16 +280,18 @@ def RLmain():
 
         flat_obs, state = getState(obs)
         
+        #creates a row of states, action, and reward for saving
+        #flat_obs is the state flattened into a vector, padded with zeros if no second pipe is visible
+        #if action is an int, it must be put into a 
         data.append(np.append((np.concatenate([flat_obs[0:-1], np.array([action])])), reward))
 
         score += reward
-        data.append((obs, action, reward))
         print(f"Obs: {obs}\n"
               f"Score: {score}\n"
               f"Info: {info}\n"
               f"Data: {data[-1]}")
         # time.sleep(1 / 30)
-        time.sleep(1 / 10)
+        #time.sleep(1 / 10)
 
         if done:
             env.render()
@@ -276,5 +301,18 @@ def RLmain():
     env.close()
 
 if __name__ == "__main__":
+
+    #q_agent = trainQ()
+    q_agent = QLearningAgent.load_agent('agent_test.pkl')  
+    
+    print("trained")
+
+    loops = 1000
+    counter = 0
+
+    while counter < loops:
+        RLmain(q_agent)
+        counter+=1
+
     #main()
-    RLmain()
+    
