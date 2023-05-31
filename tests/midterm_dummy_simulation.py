@@ -28,7 +28,7 @@ random agent.
 import time
 
 import sys
-sys.path.insert(0, '/home/abc/Documents/aa203/AA203Project')
+sys.path.insert(0, '/home/paulalinux20/Optimal_Control_Project/flappy-bird-gym')
 import flappy_bird_gym
 
 
@@ -37,6 +37,11 @@ import numpy as np
 import cvxpy as cvx
 
 from flappy_bird_gym.envs.game_logic import * 
+
+from networkQapprox import *
+
+import csv
+import pandas as pd
 
 
 def show_obs(obs):
@@ -128,8 +133,6 @@ def plot_scene():
     plt.plot
     plt.show()
 
-
-
 def main():
     # env = gym.make("flappy_bird_gym:FlappyBird-v0")
     # env = flappy_bird_gym.make("FlappyBird-rgb-v0")
@@ -139,6 +142,7 @@ def main():
     env._normalize_obs = False
     obs = env.reset()
     data = []
+
     while True:
         env.render()
 
@@ -157,6 +161,110 @@ def main():
         # time.sleep(1 / 30)
         # time.sleep(1 / 10)
 
+        if done:
+            env.render()
+            time.sleep(0.5)
+            break
+
+    env.close()
+
+def getState(obs):
+    obs_col = len(obs[0])
+    if obs_col < 2:
+        pad = np.zeros((len(obs),1))
+        obs = np.concatenate((obs,pad), axis=1)
+    flat_obs = obs.flatten()
+    state = flat_obs[0:-1]
+    return state
+
+def learned_control(agent, state):        
+    action = agent.get_best_action(state)
+    return action
+
+def readCSV(path):
+    #from this data we obtain the dataset and the variables
+    df = pd.read_csv(path)     
+    return df
+
+def trainQ():
+    # Define the state and action spaces
+    state_dim = 5
+    action_dim = 2
+    hidden_dim = 10
+
+    # Initialize the QLearning agent
+    agent = QLearningAgent(state_dim, action_dim, hidden_dim)
+
+    #Read in training data into a data frame
+    #data should be in the same folder, input to function should be target file name and return file name
+    save_path = '/home/paulalinux20/Optimal_Control_Project/flappy-bird-gym/data/'
+    #file_name = 'data_d29t184122'    
+    file_name = 'data_train'    
+    path = save_path + file_name + '.csv'
+
+    df = readCSV(path) #obtain the dataset and the variables from csv file 
+    #x0,x1,y0,y1,v,a,r
+
+    #get initial state, action, reward
+    initial_data= df.iloc[0]
+    state = initial_data[:5]
+    action = initial_data[-2]
+    reward = initial_data[-1]
+
+    #skip first row
+    first_row = True
+
+    # train through all the rows in saved data one time
+    for row in df.itertuples(): #options are iterrows(), values()
+        if first_row:
+            pass
+        else:
+            #index for all values
+            next_state = row[:5]
+            agent.update_Q(state, action, reward, next_state)
+            state = row[:5]
+            action = row[-2]
+            reward = row[-1]
+    
+    # to save    
+    agent.save_agent('agent.pkl')
+    # load
+    q_agent = QLearningAgent.load_agent('agent.pkl')    
+    return q_agent
+
+def RLmain():    
+
+    q_agent = trainQ()
+
+    env = flappy_bird_gym.make("FlappyBird-v0")
+
+    score = 0
+    env._normalize_obs = False
+    obs = env.reset()
+    state = getState(obs)
+    data = []
+
+    while True:
+        env.render()
+
+        # action = simple_control(obs)
+        action = learned_control(q_agent, state)
+
+        # Processing:
+        obs, reward, done, info = env.step(action)
+
+        state = getState(obs)
+        
+        data.append(np.append((np.concatenate([state, action])), reward))
+
+        score += reward
+        data.append((obs, action, reward))
+        print(f"Obs: {obs}\n"
+              f"Score: {score}\n"
+              f"Info: {info}\n"
+              f"Data: {data[-1]}")
+        # time.sleep(1 / 30)
+        time.sleep(1 / 10)
 
         if done:
             env.render()
@@ -165,6 +273,6 @@ def main():
 
     env.close()
 
-
 if __name__ == "__main__":
-    main()
+    #main()
+    RLmain()
