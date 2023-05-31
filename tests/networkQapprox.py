@@ -3,6 +3,8 @@ import random
 import tensorflow as tf
 import pickle 
 
+import os
+
 class QNetwork:
     def __init__(self, state_dim, action_dim, hidden_dim):
         self.state_dim = state_dim
