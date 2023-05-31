@@ -199,7 +199,7 @@ def trainQ(shuffled = True):
     #data should be in the same folder, input to function should be target file name and return file name
     save_path = '/home/paulalinux20/Optimal_Control_Project/flappy-bird-gym/data/'
     if shuffled:
-        file_name = 'data_d29t184122_train'   
+        file_name = 'data_short_train'   
     else:
         file_name = 'data_d29t184122'   
     path = save_path + file_name + '.csv'
@@ -252,71 +252,72 @@ def trainQ(shuffled = True):
         
         print("training loop #" + str(loop_through_data) + " done")
         
-    # to save    
-    agent.save_agent('agent_more_not.pkl')
-    # load
-    q_agent = QLearningAgent.load_agent('agent_more_not.pkl')    
-    return q_agent
+    # # to save    
+    # agent.save_agent('agent_more_not.pkl')
+    # # load
+    # q_agent = QLearningAgent.load_agent('agent_more_not.pkl')    
+
+    return agent
 
 def RLmain(q_agent: QLearningAgent, train=False):    
 
-    env = flappy_bird_gym.make("FlappyBird-v0")
+    loops = 2
+    counter = 0
 
-    score = 0
-    env._normalize_obs = False
-    obs = env.reset()
-    flat_obs, state = getState(obs)
-    data = []
+    shuffled = True
+    #q_agent = trainQ(shuffled)
 
-    #needed if training
-    next_state = state
+    while counter < loops:
 
-    while True:
-        env.render()
+        env = flappy_bird_gym.make("FlappyBird-v0")
 
-        # action = simple_control(obs)
-        action = learned_control(q_agent, state)
-
-        # Processing:
-        obs, reward, done, info = env.step(action)
-
+        score = 0
+        env._normalize_obs = False
+        obs = env.reset()
         flat_obs, state = getState(obs)
-        
-        #creates a row of states, action, and reward for saving
-        #flat_obs is the state flattened into a vector, padded with zeros if no second pipe is visible
-        #if action is an int, it must be put into a 
-        data.append(np.append((np.concatenate([flat_obs[0:-1], np.array([action])])), reward))
+        data = []
 
-        if train: #error here
-            q_values = q_agent.Q.predict(state)
-            print("passed predict: ", q_values)
-            next_q_values = q_agent.Q.predict(next_state)
-            td_target = reward + q_agent.gamma * np.max(next_q_values)
-            td_error = td_target - q_values[0][action]
-            target = q_values
-            target[0][action] += q_agent.alpha * td_error
-            q_agent.Q.update(state, target)
-            print("passed")
-            q_agent.update_Q(state, int(action), reward, next_state)
-            #q_agent.Q.update()
-        
         #needed if training
         next_state = state
 
-        score += reward
-        print(f"Obs: {obs}\n"
-              f"Score: {score}\n"
-              f"Info: {info}\n"
-              f"Data: {data[-1]}")
-        # time.sleep(1 / 30)
-        #time.sleep(1 / 10)
-
-        if done:
+        while True:
             env.render()
-            time.sleep(0.5)
-            break
 
-    env.close()
+            # action = simple_control(obs)
+            action = learned_control(q_agent, state)
+
+            # Processing:
+            obs, reward, done, info = env.step(action)
+
+            flat_obs, state = getState(obs)
+            
+            #creates a row of states, action, and reward for saving
+            #flat_obs is the state flattened into a vector, padded with zeros if no second pipe is visible
+            #if action is an int, it must be put into a 
+            data.append(np.append((np.concatenate([flat_obs[0:-1], np.array([action])])), reward))
+
+            if train: #error here
+                q_agent.update_Q(state, int(action), reward, next_state)
+            
+            #needed if training
+            next_state = state
+
+            score += reward
+            print(f"Obs: {obs}\n"
+                f"Score: {score}\n"
+                f"Info: {info}\n"
+                f"Data: {data[-1]}")
+            # time.sleep(1 / 30)
+            #time.sleep(1 / 10)
+
+            if done:
+                env.render()
+                time.sleep(0.5)
+                break
+
+        counter+=1
+
+        env.close()
     return q_agent
 
 if __name__ == "__main__":
@@ -327,16 +328,12 @@ if __name__ == "__main__":
     # shuffled = False
     # q_agent = trainQ(shuffled)
     
-    q_agent = QLearningAgent.load_agent('agent_test.pkl')  
-
-    loops = 1000
-    counter = 0
+    q_agent_old = QLearningAgent.load_agent('agent_more_trained.pkl')  
 
     #train while running y/n
-    train = True
+    train = False
 
-    while counter < loops:
-        RLmain(q_agent, train)
-        counter+=1
-        print("loop")
+    agent = RLmain(q_agent_old, train)
+    agent.save_agent('agent_more_trained.pkl')
+
     

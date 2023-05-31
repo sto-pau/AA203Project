@@ -273,6 +273,28 @@ def RLmain():
 
     env.close()
 
+    if info['score'] > -1:
+        print("adding to csv")
+
+        # Open the CSV file in write mode
+        with open(filename, 'w', newline='') as file:
+            writer = csv.writer(file)
+
+            # Write each row of data to the CSV file
+            for row in data:
+                writer.writerow(row)
+
 if __name__ == "__main__":
-    #main()
-    RLmain()
+    loops = 1000
+    counter = 0
+
+    # Get the current date and time
+    current_datetime = datetime.datetime.now()
+    datetime_str = current_datetime.strftime("d%dt%H%M%S")
+
+    # Create the file name with the date and time
+    filename = f"data_{datetime_str}.csv"
+
+    while counter < loops:
+        main(filename)
+        counter+=1
