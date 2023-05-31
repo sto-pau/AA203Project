@@ -18,8 +18,9 @@ agent = QLearningAgent(state_dim, action_dim, hidden_dim)
 
 #Read in training data into a data frame
 #data should be in the same folder, input to function should be target file name and return file name
-save_path = '/home/paulalinux20/Optimal_Control_Project/flappy-bird-gym/data'
-file_name = 'data_d29t184122'    
+save_path = '/home/paulalinux20/Optimal_Control_Project/flappy-bird-gym/data/'
+#file_name = 'data_d29t184122'    
+file_name = 'data_train'    
 path = save_path + file_name + '.csv'
 
 df = readCSV(path) #obtain the dataset and the variables from csv file 
@@ -27,7 +28,7 @@ df = readCSV(path) #obtain the dataset and the variables from csv file
 
 #get initial state, action, reward
 initial_data= df.iloc[0]
-state = initial_data[:,5]
+state = initial_data[:5]
 action = initial_data[-2]
 reward = initial_data[-1]
 
@@ -40,9 +41,9 @@ for row in df.itertuples(): #options are iterrows(), values()
         pass
     else:
         #index for all values
-        next_state = row[:,5]
+        next_state = row[:5]
         agent.update_Q(state, action, reward, next_state)
-        state = row[:,5]
+        state = row[:5]
         action = row[-2]
         reward = row[-1]
    
