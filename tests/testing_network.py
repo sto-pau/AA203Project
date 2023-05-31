@@ -175,7 +175,7 @@ def getState(obs):
         obs = np.concatenate((obs,pad), axis=1)
     flat_obs = obs.flatten()
     state = flat_obs[0:-1]
-    return state
+    return flat_obs, state.reshape(-1,len(state))
 
 def learned_control(agent, state):        
     action = agent.get_best_action(state)
@@ -189,7 +189,7 @@ def readCSV(path):
 def trainQ():
     # Define the state and action spaces
     state_dim = 5
-    action_dim = 1
+    action_dim = 2
     hidden_dim = 10
 
     # Initialize the QLearning agent
@@ -236,12 +236,14 @@ def RLmain():
 
     q_agent = trainQ()
 
+    print("trained")
+
     env = flappy_bird_gym.make("FlappyBird-v0")
 
     score = 0
     env._normalize_obs = False
     obs = env.reset()
-    state = getState(obs)
+    flat_obs, state = getState(obs)
     data = []
 
     while True:
@@ -253,9 +255,9 @@ def RLmain():
         # Processing:
         obs, reward, done, info = env.step(action)
 
-        state = getState(obs)
+        flat_obs, state = getState(obs)
         
-        data.append(np.append((np.concatenate([state, action])), reward))
+        data.append(np.append((np.concatenate([flat_obs[0:-1], np.array([action])])), reward))
 
         score += reward
         data.append((obs, action, reward))
