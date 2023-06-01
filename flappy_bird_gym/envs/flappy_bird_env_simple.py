@@ -110,15 +110,11 @@ class FlappyBirdEnvSimple(gym.Env):
             if count >= 2:
                 break
         
-        # reduce if only one pipe in frames
-        h_dists = h_dists[:count]
-        v_dists = v_dists[:count]
-        y_vel = np.ones(count)*self._game.player_vel_y
-
-        if self._normalize_obs:
-            h_dist /= self._screen_size[0]
-            v_dist /= self._screen_size[1]
-            y_vel /= self._screen_size[1]
+        # repeat if only one pipe in frames
+        if h_dists.shape[0] == 1:   
+            h_dists = np.concatenate((h_dists,h_dists))
+            v_dists = np.concatenate((v_dists,v_dists))
+        y_vel = np.ones(2)*self._game.player_vel_y
 
         return np.array([
             h_dists,

@@ -74,7 +74,8 @@ def mpc_control(obs, N):
 
     Y_LOW = max([y0,y1]) + 100
     Y_HIGH = min([y0,y1]) - 100
-    PIPE_GAP = 80
+    PIPE_GAP = 90
+    PAD = 10
 
     Yub = np.zeros((N+1,1))
     Ylb = np.zeros((N+1,1))
@@ -94,11 +95,11 @@ def mpc_control(obs, N):
     for k in range(N+1):
         # collision boundary
         X[k] = k*-PIPE_VEL_X
-        if x0 - X[k] < 0:
+        if (x0 + PAD) - X[k] < 0:
             yf = y1
             xf = x1
 
-        if x0 - X[k] <= PIPE_WIDTH and x0 - X[k] >= 0:
+        if x0 - X[k] <= PIPE_WIDTH + PAD and x0 + - X[k] >= 0:
             Yub[k] = yf - PIPE_GAP/2
             Ylb[k] = yf + PIPE_GAP/2
         elif x1 - X[k] <= PIPE_WIDTH and x1 - X[k] >= 0:
@@ -130,15 +131,15 @@ def mpc_control(obs, N):
 
     objective = cvx.Minimize( cvx.sum( cost_terms ) )
     prob = cvx.Problem(objective, constraints)
-    prob.solve(solver='CBC')
+    prob.solve(solver='GUROBI')
 
-    # plt.plot(X, Yub)
-    # plt.plot(X, Ylb)
-    # plt.plot(X, Y.value)
-    # plt.gca().invert_yaxis()
-    # plt.show()
+    plt.plot(X, Yub)
+    plt.plot(X, Ylb)
+    plt.plot(X, Y.value)
+    plt.gca().invert_yaxis()
+    plt.show()
 
-    if prob.status == 'infeasible':
+    if prob.status == 'infeasible' or prob.status == 'infeasible_or_unbounded':
         print(prob.status)
         return 0, (np.zeros((N+1,1)), Yub, Ylb)
     else:
@@ -182,7 +183,7 @@ def main():
     env._normalize_obs = False
     obs = env.reset()
     data = []
-    N = 20 # for MPC
+    N = 51 # for MPC
     while True:
         env.render()
 
@@ -225,9 +226,9 @@ if __name__ == "__main__":
     # obs = np.array([[477., 477.],
     #                 [-35., -35.],
     #                 [ -9.,  -9.]])
-    # obs = np.array([[ 77., 221.],
-    #    [-52., -13.],
-    #    [ -9.,  -9.]])
-    # N = 10
-    # mpc_control(obs, N)
+    obs = np.array([[ 53., 197.],
+       [ 34., -78.],
+       [ -7.,  -7.]])
+    N = 35
+    mpc_control(obs, N)
     main()
