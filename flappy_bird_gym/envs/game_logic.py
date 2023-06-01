@@ -34,6 +34,8 @@ from enum import IntEnum
 from itertools import cycle
 from typing import Dict, Tuple, Union
 
+import numpy as np
+
 import pygame
 
 ############################ Speed and Acceleration ############################
@@ -186,7 +188,7 @@ class FlappyBirdLogic:
 
         return False
 
-    def update_state(self, action: Union[Actions, int]) -> bool:
+    def update_state(self, a, action: Union[Actions, int]) -> bool:
         """ Given an action taken by the player, updates the game's state.
 
         Args:
@@ -199,7 +201,7 @@ class FlappyBirdLogic:
         self.sound_cache = None
         if action == FlappyBirdLogic.Actions.FLAP:
             if self.player_y > -2 * PLAYER_HEIGHT:
-                self.player_vel_y = PLAYER_FLAP_ACC
+                # self.player_vel_y = PLAYER_FLAP_ACC
                 self._player_flapped = True
                 self.sound_cache = "wing"
 
@@ -228,11 +230,23 @@ class FlappyBirdLogic:
             self.player_rot -= PLAYER_VEL_ROT
 
         # player's movement
-        self.player_y += min(self.player_vel_y,
-            self.base_y - self.player_y - PLAYER_HEIGHT)
+        u = a
 
-        if self.player_vel_y < PLAYER_MAX_VEL_Y and not self._player_flapped:
-            self.player_vel_y += PLAYER_ACC_Y
+        s = np.array([self.player_y, self.player_vel_y])
+        A = np.array([  [1, 1],
+                        [0, 1]])
+        # B = np.array([0, PLAYER_FLAP_ACC])
+        B = np.array([0, -2])
+        B = np.reshape(B, (2,1))
+        C = np.array([0, PLAYER_ACC_Y])
+        s =  A@s + B@u + C
+        self.player_y = s[0]
+        self.player_vel_y = s[1]
+        # self.player_y += min(self.player_vel_y,
+        #     self.base_y - self.player_y - PLAYER_HEIGHT)
+
+        # if self.player_vel_y < PLAYER_MAX_VEL_Y and not self._player_flapped:
+        #     self.player_vel_y += PLAYER_ACC_Y
 
         if self._player_flapped:
             self._player_flapped = False

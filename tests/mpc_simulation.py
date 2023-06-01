@@ -50,9 +50,9 @@ def simple_control(obs):
         '''
         0 means do nothing, 1 means flap
         '''
-        c = -0.05 #from paper
+        c = -0.1*512 #from paper
 
-        if obs[1] < c:
+        if obs[1][0] < c:
             action = 1
         else:
             action = 0  
@@ -66,82 +66,61 @@ def mpc_control(obs, N):
     y1 = obs[1,1]
     v0 = obs[2,0]
 
-    Q = np.eye(1)
     R = np.eye(1)
-    M = 1000 # big M parameters
-    n = 1
-    m = 1
 
-    Y_LOW = max([y0,y1]) + 100
-    Y_HIGH = min([y0,y1]) - 100
-    PIPE_GAP = 80
+    Yub = np.zeros((N+1,1))-y0
+    Ylb = np.zeros((N+1,1))-y0
+    yf = np.zeros((N+1,2))
 
-    Yub = np.zeros((N+1,1))
-    Ylb = np.zeros((N+1,1))
-    yf = y0
-    xf = x0
     X = np.zeros((N+1,1))
+    A = np.array([  [1, 1],
+                    [0, 1]])
+    # B = np.array([0, PLAYER_FLAP_ACC])
+    B = np.array([0, -2])
+    B = np.reshape(B, (2,1))
+    C = np.array([0, PLAYER_ACC_Y])
 
-    Y = cvx.Variable((N+1,1))
-    V = cvx.Variable((N+1,1))
-    U = cvx.Variable((N,1), boolean = True)
+    Y = cvx.Variable((N+1,2))
+    U = cvx.Variable((N,1))
 
     cost_terms = []
     constraints = []
 
-    constraints.append( Y[0] == 0 )
-    constraints.append( V[0] == v0 )
+    PAD = 25
     for k in range(N+1):
         # collision boundary
         X[k] = k*-PIPE_VEL_X
-        if x0 - X[k] < 0:
-            yf = y1
-            xf = x1
-
-        if x0 - X[k] <= PIPE_WIDTH and x0 - X[k] >= 0:
-            Yub[k] = yf - PIPE_GAP/2
-            Ylb[k] = yf + PIPE_GAP/2
-        elif x1 - X[k] <= PIPE_WIDTH and x1 - X[k] >= 0:
-            Yub[k] = yf - PIPE_GAP/2
-            Ylb[k] = yf + PIPE_GAP/2
+        if (x0 + PAD) - X[k] < 0:
+            yf[k][0] = y1
         else:
-            Yub[k] = Y_HIGH #max([Y_HIGH, (yf - PIPE_GAP/2) - (xf - X[k] - PIPE_WIDTH)])
-            Ylb[k] = Y_LOW #min([Y_LOW, (yf + PIPE_GAP/2) + (xf - X[k] - PIPE_WIDTH)])
-        constraints.append( Y[k] >= Yub[k] )
-        constraints.append( Y[k] <= Ylb[k] )
+            yf[k][0] = y0
 
-    # plt.plot(X, Yub)
-    # plt.plot(X, Ylb)
-    # plt.gca().invert_yaxis()
-    # plt.show()
-
+    constraints.append( Y[0] == [0, v0] )
     for k in range(N):
         # dynamics
-        constraints.append( Y[k] + V[k] == Y[k+1] )
-        constraints.append( -V[k+1] + M*U[k] <= -PLAYER_FLAP_ACC + M )
-        constraints.append( V[k+1] + M*U[k] <= PLAYER_FLAP_ACC + M )
-        constraints.append( -V[k+1] + V[k] - M*U[k] <= -PLAYER_ACC_Y )
-        constraints.append( V[k+1] - V[k] - M*U[k] <= PLAYER_ACC_Y )
-        constraints.append( V[k+1] <= PLAYER_MAX_VEL_Y)
-        cost_terms.append( -Y[k] )
-        # cost_terms.append( cvx.norm(yf - Y[k]) )
-       
-    cost_terms.append( -Y[N] )
+        constraints.append( Y[k+1] == A@Y[k] + B@U[k] + C )
+        constraints.append( U[k] <= 1 )
+        constraints.append( U[k] >= 0 )
+        constraints.append( Y[k][1] >= -9 )
+        constraints.append( Y[k][1] <= 10 )
+        cost_terms.append( cvx.quad_form(U[k], R*0.1) )
+        cost_terms.append( cvx.norm(Y[k]-yf[k]) )
+
+    cost_terms.append( cvx.norm(Y[N]-yf[N]) )
 
     objective = cvx.Minimize( cvx.sum( cost_terms ) )
     prob = cvx.Problem(objective, constraints)
-    prob.solve(solver='CBC')
-
-    # plt.plot(X, Yub)
-    # plt.plot(X, Ylb)
-    # plt.plot(X, Y.value)
-    # plt.gca().invert_yaxis()
-    # plt.show()
+    prob.solve()
 
     if prob.status == 'infeasible':
         print(prob.status)
         return 0, (np.zeros((N+1,1)), Yub, Ylb)
     else:
+        # plt.plot(X, yf[:,0])
+        # plt.plot(0,0, marker = 'x')
+        # plt.plot(X, Y.value[:,0])
+        # plt.gca().invert_yaxis()
+        # plt.show()
         return U.value[0], (Y.value, Yub, Ylb)
 
 def plot_scene(env, obs, Y, N):
@@ -172,7 +151,6 @@ def plot_scene(env, obs, Y, N):
     plt.show()
 
 
-
 def main():
     # env = gym.make("flappy_bird_gym:FlappyBird-v0")
     # env = flappy_bird_gym.make("FlappyBird-rgb-v0")
@@ -182,17 +160,19 @@ def main():
     env._normalize_obs = False
     obs = env.reset()
     data = []
-    N = 20 # for MPC
+    N = 15 # for MPC
     while True:
         env.render()
 
         # action = simple_control(obs)
-        action, Ys = mpc_control(obs, N)
+        a, Ys = mpc_control(obs, N)
+        # action = np.random.rand(1).round()[0]
         # if obs[0][0] < 70:
         #     plot_scene(env, obs, Ys, N)
-
+        if a != 0 :
+            action = 1
         # Processing:
-        obs, reward, done, info = env.step(action)
+        obs, reward, done, info = env.step(a, action)
 
 
         score += reward
@@ -216,18 +196,18 @@ if __name__ == "__main__":
     # obs = np.array([[ 77., 221.],
     #                 [130.-200, 124.-200],
     #                 [  8.,   8.]])
-    # obs = np.array([[ 73., 217.],
-    #                 [ -4.,  22.],
-    #                 [ -8.,  -8.]])
-    # obs = np.array([[ 89., 233.],
-    #                 [ 29., 115.],
-    #                 [  0.,   0.]])
-    # obs = np.array([[477., 477.],
-    #                 [-35., -35.],
-    #                 [ -9.,  -9.]])
-    # obs = np.array([[ 77., 221.],
-    #    [-52., -13.],
-    #    [ -9.,  -9.]])
-    # N = 10
+    # # obs = np.array([[ 73., 217.],
+    # #                 [ -4.,  22.],
+    # #                 [ -8.,  -8.]])
+    # # obs = np.array([[ 89., 233.],
+    # #                 [ 29., 115.],
+    # #                 [  0.,   0.]])
+    # # obs = np.array([[477., 477.],
+    # #                 [-35., -35.],
+    # #                 [ -9.,  -9.]])
+    # # obs = np.array([[ 77., 221.],
+    # #    [-52., -13.],
+    # #    [ -9.,  -9.]])
+    # N = 20
     # mpc_control(obs, N)
     main()

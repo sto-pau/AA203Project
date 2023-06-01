@@ -111,14 +111,11 @@ class FlappyBirdEnvSimple(gym.Env):
                 break
         
         # reduce if only one pipe in frames
-        h_dists = h_dists[:count]
-        v_dists = v_dists[:count]
-        y_vel = np.ones(count)*self._game.player_vel_y
+        if h_dists.shape[0] == 1:   
+            h_dists = np.concatenate((h_dists,h_dists))
+            v_dists = np.concatenate((v_dists,v_dists))
+        y_vel = np.ones(2)*self._game.player_vel_y
 
-        if self._normalize_obs:
-            h_dist /= self._screen_size[0]
-            v_dist /= self._screen_size[1]
-            y_vel /= self._screen_size[1]
 
         return np.array([
             h_dists,
@@ -126,7 +123,7 @@ class FlappyBirdEnvSimple(gym.Env):
             y_vel
         ])
 
-    def step(self,
+    def step(self, a,
              action: Union[FlappyBirdLogic.Actions, int],
     ) -> Tuple[np.ndarray, float, bool, Dict]:
         """ Given an action, updates the game state.
@@ -146,7 +143,7 @@ class FlappyBirdEnvSimple(gym.Env):
                   otherwise);
                 * an info dictionary.
         """
-        alive = self._game.update_state(action)
+        alive = self._game.update_state(a, action)
         obs = self._get_observation()
 
         reward = 1 if alive else 0

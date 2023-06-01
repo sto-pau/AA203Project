@@ -37,6 +37,7 @@ def play():
 
     clock = pygame.time.Clock()
     score = 0
+    env._normalize_obs = False
 
     obs = env.reset()
     while True:
@@ -44,12 +45,12 @@ def play():
 
         # Getting action:
         action = 0
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-            if (event.type == pygame.KEYDOWN and
-                    (event.key == pygame.K_SPACE or event.key == pygame.K_UP)):
-                action = 1
+        # for event in pygame.event.get():
+        #     if event.type == pygame.QUIT:
+        #         pygame.quit()
+        #     if (event.type == pygame.KEYDOWN and
+        #             (event.key == pygame.K_SPACE or event.key == pygame.K_UP)):
+        #         action += 1
 
         # Processing:
         obs, reward, done, info = env.step(action)
@@ -59,6 +60,8 @@ def play():
         print(f"Score: {score}\n")
 
         clock.tick(15)
+        # clock.tick(2)
+
 
         if done:
             env.render()
