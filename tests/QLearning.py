@@ -10,12 +10,11 @@ import time
 import glob
 import io
 import base64
+import os
+save_path = os.path.expanduser('~/AA203/AA203Project/tests/model')
 from IPython.display import HTML
 from IPython import display as ipythondisplay
 from pyvirtualdisplay import Display
-# display = Display(visible=0, size=(1400, 900))
-# display.start()
-
 
 # Load gym environment and get action and state spaces.
 env = flappy_bird_gym.make("FlappyBird-v0")
@@ -38,8 +37,17 @@ class DQN(tf.keras.Model):
     x = self.dense2(x)
     return self.dense3(x)
 
-main_nn = DQN()
-target_nn = DQN()
+if os.path.exists(save_path):
+    # Load the saved model
+    main_nn = tf.keras.models.load_model(save_path)
+    main_nn.compile(optimizer='adam', loss='mean_squared_error', metrics=['accuracy'])
+    target_nn = tf.keras.models.load_model(save_path)
+    target_nn.compile(optimizer='adam', loss='mean_squared_error', metrics=['accuracy'])
+else:
+    # Create a new model
+    main_nn = DQN()
+    target_nn = DQN()
+    # Train the model or perform any other operations
 
 optimizer = tf.keras.optimizers.Adam(1e-4)
 mse = tf.keras.losses.MeanSquaredError()
@@ -73,13 +81,27 @@ class ReplayBuffer(object):
     dones = np.array(dones, dtype=np.float32)
     return states, actions, rewards, next_states, dones
   
+def simple_control(obs):
+        '''
+        0 means do nothing, 1 means flap
+        '''
+        c = -0.05 #from paper
+
+        if obs[1] < c:
+            action = 1
+        else:
+            action = 0  
+        
+        return action
+
 def select_epsilon_greedy_action(state, epsilon):
   """Take random action with probability epsilon, else take best action."""
   result = tf.random.uniform((1,))
+  state_in = tf.expand_dims(state, axis=0)
   if result < epsilon:
-    return env.action_space.sample() # Random action (left or right).
+    return simple_control(state) # Random action (left or right).
   else:
-    return tf.argmax(main_nn(state)[0]).numpy() # Greedy action for state.
+    return tf.argmax(main_nn(state_in)[0]).numpy() # Greedy action for state.
   
 @tf.function
 def train_step(states, actions, rewards, next_states, dones):
@@ -100,7 +122,7 @@ def train_step(states, actions, rewards, next_states, dones):
   return loss
 
 # Hyperparameters.
-num_episodes = 1000
+num_episodes = 3000
 epsilon = 1.0
 batch_size = 32
 discount = 0.99
@@ -113,8 +135,8 @@ for episode in range(num_episodes+1):
   state = env.reset()
   ep_reward, done = 0, False
   while not done:
-    state_in = tf.expand_dims(state, axis=0)
-    action = select_epsilon_greedy_action(state_in, epsilon)
+    
+    action = select_epsilon_greedy_action(state, epsilon)
     next_state, reward, done, info = env.step(action)
     ep_reward += reward
     # Save to experience replay.
@@ -141,38 +163,6 @@ for episode in range(num_episodes+1):
   if episode % 50 == 0:
     print(f'Episode {episode}/{num_episodes}. Epsilon: {epsilon:.3f}. '
           f'Reward in last 100 episodes: {np.mean(last_100_ep_rewards):.3f}')
+    
+main_nn.save(save_path)
 env.close()
-
-def main():
-    env = flappy_bird_gym.make("FlappyBird-v0")
-
-    score = 0
-    env._normalize_obs = False
-    obs = env.reset()
-    data = []
-
-    while True:
-        env.render()
-
-        # action = simple_control(obs)
-        action = select_epsilon_greedy_action(state, epsilon=0.01)
-
-        # Processing:
-        obs, reward, done, info = env.step(action)
-
-        score += reward
-        data.append((obs, action, reward))
-        print(f"Obs: {obs}\n"
-              f"Score: {score}\n"
-              f"Info: {info}\n"
-              f"Data: {data[-1]}")
-
-        if done:
-            env.render()
-            time.sleep(0.5)
-            break
-
-    env.close()
-
-if __name__ == "__main__":
-    main()
