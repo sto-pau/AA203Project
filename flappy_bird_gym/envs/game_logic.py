@@ -228,6 +228,9 @@ class FlappyBirdLogic:
             self.player_rot -= PLAYER_VEL_ROT
 
         # player's movement
+        self.player_y += min(self.player_vel_y,
+            self.base_y - self.player_y - PLAYER_HEIGHT)
+
         if self.player_vel_y < PLAYER_MAX_VEL_Y and not self._player_flapped:
             self.player_vel_y += PLAYER_ACC_Y
 
@@ -237,9 +240,6 @@ class FlappyBirdLogic:
             # more rotation to cover the threshold
             # (calculated in visible rotation)
             self.player_rot = 45
-
-        self.player_y += min(self.player_vel_y,
-                             self.base_y - self.player_y - PLAYER_HEIGHT)
 
         # move pipes to left
         for up_pipe, low_pipe in zip(self.upper_pipes, self.lower_pipes):
@@ -259,3 +259,5 @@ class FlappyBirdLogic:
             self.lower_pipes.pop(0)
 
         return True
+    
+    
