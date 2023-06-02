@@ -94,8 +94,9 @@ class FlappyBirdEnvSimple(gym.Env):
         count = 0
         for up_pipe, low_pipe in zip(self._game.upper_pipes,
                                      self._game.lower_pipes):
-            h_dist = (low_pipe["x"] + PIPE_WIDTH / 2
-                      - (self._game.player_x - PLAYER_WIDTH / 2))
+            print(low_pipe['x'])
+            h_dist = (low_pipe["x"] + PIPE_WIDTH
+                      - (self._game.player_x + PLAYER_WIDTH / 2))
             h_dist += 3  # extra distance to compensate for the buggy hit-box
             if h_dist >= 0:
                 h_dists[count] = h_dist
@@ -111,15 +112,17 @@ class FlappyBirdEnvSimple(gym.Env):
                 break
         
         # repeat if only one pipe in frames
-        if h_dists.shape[0] == 1:   
-            h_dists = np.concatenate((h_dists,h_dists))
-            v_dists = np.concatenate((v_dists,v_dists))
+        if count == 1:   
+            h_dists = np.array([h_dists[0],h_dists[0]])
+            v_dists = np.array([v_dists[0],v_dists[0]])
         y_vel = np.ones(2)*self._game.player_vel_y
+        y = np.ones(2)*self._game.player_y
 
         return np.array([
             h_dists,
             v_dists,
-            y_vel
+            y_vel,
+            y
         ])
 
     def step(self,

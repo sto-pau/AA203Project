@@ -151,7 +151,7 @@ class FlappyBirdLogic:
         """ Returns a randomly generated pipe. """
         # y of gap between upper and lower pipe
         gap_y = random.randrange(0,
-                                 int(self.base_y * 0.6 - self._pipe_gap_size))
+                                 int(self.base_y * 0.4 - self._pipe_gap_size))
         gap_y += int(self.base_y * 0.2)
 
         pipe_x = self._screen_width + 10
@@ -228,11 +228,12 @@ class FlappyBirdLogic:
             self.player_rot -= PLAYER_VEL_ROT
 
         # player's movement
+        if self.player_vel_y < PLAYER_MAX_VEL_Y and not self._player_flapped:
+            self.player_vel_y += PLAYER_ACC_Y
+            
         self.player_y += min(self.player_vel_y,
             self.base_y - self.player_y - PLAYER_HEIGHT)
 
-        if self.player_vel_y < PLAYER_MAX_VEL_Y and not self._player_flapped:
-            self.player_vel_y += PLAYER_ACC_Y
 
         if self._player_flapped:
             self._player_flapped = False
