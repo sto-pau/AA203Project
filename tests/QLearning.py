@@ -49,8 +49,8 @@ else:
     target_nn = DQN()
     # Train the model or perform any other operations
 
-optimizer = tf.keras.optimizers.Adam(1e-4)
-mse = tf.keras.losses.MeanSquaredError()
+optimizer = tf.keras.optimizers.Adam(1e-4) #Optimizer for minimizing the loss function
+mse = tf.keras.losses.MeanSquaredError() #Type of Loss function
 
 class ReplayBuffer(object):
   """Experience replay buffer that samples uniformly."""
@@ -65,6 +65,8 @@ class ReplayBuffer(object):
 
   def sample(self, num_samples):
     states, actions, rewards, next_states, dones = [], [], [], [], []
+
+    #randomly select 'num_samples' number of indices starting from 0 to len(self.buffer)
     idx = np.random.choice(len(self.buffer), num_samples)
     for i in idx:
       elem = self.buffer[i]
@@ -74,6 +76,8 @@ class ReplayBuffer(object):
       rewards.append(reward)
       next_states.append(np.array(next_state, copy=False))
       dones.append(done)
+    
+    #Converting lists to np arrays
     states = np.array(states)
     actions = np.array(actions)
     rewards = np.array(rewards, dtype=np.float32)
@@ -82,17 +86,17 @@ class ReplayBuffer(object):
     return states, actions, rewards, next_states, dones
   
 def simple_control(obs):
-        '''
-        0 means do nothing, 1 means flap
-        '''
-        c = -0.05 #from paper
+  '''
+  0 means do nothing, 1 means flap
+  '''
+  c = -0.05 #from paper
 
-        if obs[1] < c:
-            action = 1
-        else:
-            action = 0  
-        
-        return action
+  if obs[1] < c:
+      action = 1
+  else:
+      action = 0  
+  
+  return action
 
 def select_epsilon_greedy_action(state, epsilon):
   """Take random action with probability epsilon, else take best action."""
@@ -135,9 +139,11 @@ for episode in range(num_episodes+1):
   state = env.reset()
   ep_reward, done = 0, False
   while not done:
-    
+    #'done' specifies if the game is done or still in action
     action = select_epsilon_greedy_action(state, epsilon)
     next_state, reward, done, info = env.step(action)
+    #Can we modify the 'reward' and make it a function of 'done'
+    #reward=reward-(1-done)*9
     ep_reward += reward
     # Save to experience replay.
     buffer.add(state, action, reward, next_state, done)
@@ -152,8 +158,8 @@ for episode in range(num_episodes+1):
       states, actions, rewards, next_states, dones = buffer.sample(batch_size)
       loss = train_step(states, actions, rewards, next_states, dones)
   
-  if episode < 950:
-    epsilon -= 0.001
+  if episode < num_episodes and epsilon > 0:
+    epsilon -= 0.0005
 
   # Once the length of last_... rewards reaches 100 it starts removing the oldest reward everytime a new reward comes in
   if len(last_100_ep_rewards) == 100:

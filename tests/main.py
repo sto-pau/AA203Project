@@ -13,20 +13,20 @@ save_path = os.path.expanduser('~/AA203/AA203Project/tests/model')
 loaded_model = tf.keras.models.load_model(save_path)
 # loaded_model.compile(optimizer='adam', loss='mean_squared_error', metrics=['accuracy'])
 
-def select_epsilon_greedy_action(state, epsilon):
-  """Take random action with probability epsilon, else take best action."""
-  action_list = [0,1]
-  random_action = random.choice(action_list)
-  result = tf.random.uniform((1,))
-  if result < epsilon:
-    return random_action # Random action (left or right).
-  else:
-    return tf.argmax(loaded_model(state)[0]).numpy() # Greedy action for state.
+# def select_epsilon_greedy_action(state, epsilon):
+#   """Take random action with probability epsilon, else take best action."""
+#   action_list = [0,1]
+#   random_action = random.choice(action_list)
+#   result = tf.random.uniform((1,))
+#   if result < epsilon:
+#     return random_action # Random action (left or right).
+#   else:
+#     return  # Greedy action for state.
   
 def main():
     env = flappy_bird_gym.make("FlappyBird-v0")
     score = 0
-    env._normalize_obs = False
+    env._normalize_obs = True
     obs = env.reset()
     data = []
 
@@ -35,7 +35,7 @@ def main():
 
         # action = simple_control(obs)
         obs_in = tf.expand_dims(obs, axis=0)
-        action = select_epsilon_greedy_action(obs_in, epsilon=0.01)
+        action = tf.argmax(loaded_model(obs_in)[0]).numpy()
 
         # Processing:
         obs, reward, done, info = env.step(action)
