@@ -89,41 +89,31 @@ class FlappyBirdEnvSimple(gym.Env):
         self._bg_type = background
 
     def _get_observation(self):
-        h_dists = np.zeros(2)
-        v_dists = np.zeros(2)
-        count = 0
+        up_pipe = low_pipe = None
+        h_dist = 0
         for up_pipe, low_pipe in zip(self._game.upper_pipes,
                                      self._game.lower_pipes):
             h_dist = (low_pipe["x"] + PIPE_WIDTH / 2
                       - (self._game.player_x - PLAYER_WIDTH / 2))
             h_dist += 3  # extra distance to compensate for the buggy hit-box
             if h_dist >= 0:
-                h_dists[count] = h_dist
-
-                upper_pipe_y = up_pipe["y"] + PIPE_HEIGHT
-                lower_pipe_y = low_pipe["y"]
-                player_y = self._game.player_y
-
-                v_dists[count] = (upper_pipe_y + lower_pipe_y) / 2 - (player_y
-                                                            + PLAYER_HEIGHT/2)
-                count += 1
-            if count >= 2:
                 break
-        
-        # reduce if only one pipe in frames
-        h_dists = h_dists[:count]
-        v_dists = v_dists[:count]
-        y_vel = np.ones(count)*self._game.player_vel_y
+
+        upper_pipe_y = up_pipe["y"] + PIPE_HEIGHT
+        lower_pipe_y = low_pipe["y"]
+        player_y = self._game.player_y
+
+        v_dist = (upper_pipe_y + lower_pipe_y) / 2 - (player_y
+                                                      + PLAYER_HEIGHT/2)
 
         if self._normalize_obs:
             h_dist /= self._screen_size[0]
             v_dist /= self._screen_size[1]
-            y_vel /= self._screen_size[1]
+            
 
         return np.array([
-            h_dists,
-            v_dists,
-            y_vel
+            h_dist,
+            v_dist,
         ])
 
     def step(self,
@@ -149,7 +139,7 @@ class FlappyBirdEnvSimple(gym.Env):
         alive = self._game.update_state(action)
         obs = self._get_observation()
 
-        reward = 1 if alive else 0
+        reward = 1
 
         done = not alive
         info = {"score": self._game.score}
