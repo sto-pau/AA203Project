@@ -45,7 +45,9 @@ def main():
         print(f"Obs: {obs}\n"
               f"Score: {score}\n"
               f"Info: {info}\n"
-              f"Data: {data[-1]}")
+              f"Done: {done}\n"
+              # f"Data: {data[-1]}"
+              )
 
         if done:
             env.render()
