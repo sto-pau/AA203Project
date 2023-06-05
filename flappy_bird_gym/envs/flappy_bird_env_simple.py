@@ -89,38 +89,12 @@ class FlappyBirdEnvSimple(gym.Env):
         self._bg_type = background
 
     def _get_observation(self):
-        h_dists = np.zeros(2)
-        v_dists = np.zeros(2)
-        count = 0
-        for up_pipe, low_pipe in zip(self._game.upper_pipes,
-                                     self._game.lower_pipes):
-            h_dist = (low_pipe["x"] + PIPE_WIDTH / 2
-                      - (self._game.player_x - PLAYER_WIDTH / 2))
-            h_dist += 3  # extra distance to compensate for the buggy hit-box
-            if h_dist >= 0:
-                h_dists[count] = h_dist
-
-                upper_pipe_y = up_pipe["y"] + PIPE_HEIGHT
-                lower_pipe_y = low_pipe["y"]
-                player_y = self._game.player_y
-
-                v_dists[count] = (upper_pipe_y + lower_pipe_y) / 2 - (player_y
-                                                            + PLAYER_HEIGHT/2)
-                count += 1
-            if count >= 2:
-                break
-        
-        # repeat if only one pipe in frames
-        if h_dists.shape[0] == 1:   
-            h_dists = np.concatenate((h_dists,h_dists))
-            v_dists = np.concatenate((v_dists,v_dists))
-        y_vel = np.ones(2)*self._game.player_vel_y
-
-        return np.array([
-            h_dists,
-            v_dists,
-            y_vel
-        ])
+        obs = {}
+        obs['y'] = self._game.player_y
+        obs['x'] = self._game.player_x
+        obs['vy'] = self._game.player_vel_y
+        obs['pipes'] = self._game.lower_pipes
+        return obs
 
     def step(self,
              action: Union[FlappyBirdLogic.Actions, int],
