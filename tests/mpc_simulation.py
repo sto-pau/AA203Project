@@ -38,6 +38,37 @@ from scipy.interpolate import splrep, splev
 # from simple_controller import simple_control
 from mpc_controller import MPC_Control
 
+class MyTimer():
+    def __init__(self):
+        '''
+        timer with statistics
+        '''
+        self.max = 0
+        self.min = np.inf
+        self.steps = 0
+        self.sma = 0 # simple moving average
+        self.started = False
+
+    def start(self):
+        '''
+        starts timer
+        '''
+        self.t_i = time.time()
+        self.started = True
+
+    def stop(self):
+        '''
+        stops timer and collects statistics
+        '''
+        if self.started == True:
+            t_f = time.time() - self.t_i
+            self.steps += 1
+            self.sma += (1/self.steps) * (t_f - self.sma)
+            if t_f < self.min:
+                self.min = t_f
+            if t_f > self.max:
+                self.max = t_f
+            self.started = False
 
 
 
@@ -52,24 +83,30 @@ def main():
 
     data = []
     score = 0
+
+    performance = MyTimer()
+
     while True:
         env.render()
         # action = simple_control(obs)
+        performance.start()
         agent.update_map(obs)
         action = agent.update_control(obs)
+        performance.stop()
+        print(f'max = {performance.max}\tmin = {performance.min}\tavg = {performance.sma}')
 
         # Processing:
         obs, reward, done, info = env.step(action)
 
         score += reward
         data.append((obs, action, reward))
-        print(f"Obs: {obs}\n"
-            f"Score: {score}\n"
-            f"Info: {info}")
+        # print(f"Obs: {obs}\t"
+        #     f"Score: {score}\t"
+        #     f"Info: {info}")
         # time.sleep(1 / 30)
         # time.sleep(1 / 5)
 
-        if done:
+        if done or score == 1000:
             env.render()
             time.sleep(0.5)
             y = np.asarray(agent.log)[:,0]

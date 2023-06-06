@@ -132,8 +132,8 @@ class MPC_Control():
             constraints.append( Y[k] >= self.Yub[k] )
 
             # cost for distance from center, none zero y velocity and control
-            cost_terms.append( cvx.abs(Y[k] - (self.Ylb[k] + self.Yub[k])/2) )
             cost_terms.append( cvx.abs(V[k]))
+            cost_terms.append( cvx.abs(Y[k] - (self.Ylb[k] + self.Yub[k])/2) )
             cost_terms.append( U[k] )
 
         # cost for last term
