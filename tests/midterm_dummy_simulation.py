@@ -28,7 +28,7 @@ random agent.
 import time
 
 import sys
-sys.path.insert(0, '/home/paulalinux20/Optimal_Control_Project/flappy-bird-gym')
+# sys.path.insert(0, '/home/AA203/AA203Project')
 import flappy_bird_gym
 
 
@@ -139,15 +139,15 @@ def main():
     env = flappy_bird_gym.make("FlappyBird-v0")
 
     score = 0
-    env._normalize_obs = False
+    env._normalize_obs = True
     obs = env.reset()
     data = []
 
     while True:
         env.render()
 
-        # action = simple_control(obs)
-        action = mpc_control(obs, 5)
+        action = simple_control(obs)
+        # action = mpc_control(obs, 5)
 
         # Processing:
         obs, reward, done, info = env.step(action)
@@ -156,7 +156,7 @@ def main():
         data.append((obs, action, reward))
         print(f"Obs: {obs}\n"
               f"Score: {score}\n"
-              f"Info: {info}\n"
+              f"Info: {info['score']}\n"
               f"Data: {data[-1]}")
         # time.sleep(1 / 30)
         # time.sleep(1 / 10)
@@ -274,5 +274,5 @@ def RLmain():
     env.close()
 
 if __name__ == "__main__":
-    #main()
-    RLmain()
+    main()
+    # RLmain()

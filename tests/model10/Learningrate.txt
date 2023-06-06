@@ -1,0 +1,2 @@
+1e-3 for all models starting 3-10
+Changing from next model
