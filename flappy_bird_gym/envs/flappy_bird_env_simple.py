@@ -93,7 +93,8 @@ class FlappyBirdEnvSimple(gym.Env):
         obs['y'] = self._game.player_y
         obs['x'] = self._game.player_x
         obs['vy'] = self._game.player_vel_y
-        obs['pipes'] = self._game.lower_pipes
+        obs['lower_pipes'] = self._game.lower_pipes
+        obs['upper_pipes'] = self._game.upper_pipes
         return obs
 
     def step(self,

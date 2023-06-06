@@ -151,7 +151,7 @@ class FlappyBirdLogic:
         """ Returns a randomly generated pipe. """
         # y of gap between upper and lower pipe
         gap_y = random.randrange(0,
-                                 int(self.base_y * 0.4 - self._pipe_gap_size))
+                                 int(self.base_y * 0.6 - self._pipe_gap_size))
         gap_y += int(self.base_y * 0.2)
 
         pipe_x = self._screen_width + 10

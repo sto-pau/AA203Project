@@ -31,11 +31,9 @@ import sys
 sys.path.insert(0, '/home/abc/Documents/aa203/AA203Project')
 
 import flappy_bird_gym
-from flappy_bird_gym.envs.game_logic import * 
 import matplotlib.pyplot as plt
-import cvxpy as cvx
 import numpy as np
-from collections import deque
+from scipy.interpolate import splrep, splev
 
 # from simple_controller import simple_control
 from mpc_controller import MPC_Control
@@ -48,18 +46,17 @@ def main():
     env.normalize_obs = False
     obs = env.reset()
 
-    N = 15 # for MPC
+    N = 45 # for MPC
     agent = MPC_Control(2,1,N)
-    for x in np.arange(obs['x'],obs['x'] + -N*PIPE_VEL_X,-PIPE_VEL_X):
-        agent.get_obstacles(x, env)
+
 
     data = []
     score = 0
     while True:
         env.render()
         # action = simple_control(obs)
-        agent.get_obstacles(obs['x'] + -N*PIPE_VEL_X,env)
-        action = agent.update(obs)
+        agent.update_map(obs)
+        action = agent.update_control(obs)
 
         # Processing:
         obs, reward, done, info = env.step(action)
