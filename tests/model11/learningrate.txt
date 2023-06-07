@@ -1,0 +1,2 @@
+learning rate=1e-4
+model name in the parameters is wrongly shown as model 10

@@ -1,0 +1,2 @@
+1800secs
+Avg. reward at the end of training=180

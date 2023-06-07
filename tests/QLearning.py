@@ -5,16 +5,13 @@ from collections import deque
 import tensorflow as tf
 import numpy as np
 import random
-import math
 import time
-import glob
-import io
-import base64
+# import math
+# import glob
+# import io
+# import base64
 import os
-save_path = os.path.expanduser('~/AA203/AA203Project/tests/model2')
-from IPython.display import HTML
-from IPython import display as ipythondisplay
-from pyvirtualdisplay import Display
+save_path = os.path.expanduser('~/AA203/AA203Project/tests/model11')
 
 # Load gym environment and get action and state spaces.
 env = flappy_bird_gym.make("FlappyBird-v0")
@@ -51,7 +48,7 @@ else:
     target_nn = DQN()
     # Train the model or perform any other operations
 
-optimizer = tf.keras.optimizers.Adam(1e-3) #Optimizer for minimizing the loss function
+optimizer = tf.keras.optimizers.Adam(1e-4) #Optimizer for minimizing the loss function
 mse = tf.keras.losses.MeanSquaredError() #Type of Loss function
 
 #an object of 'ReplayBuffer' class stores the data
@@ -100,20 +97,20 @@ def simple_control(obs):
       action = 0  
   return action
 
-def select_epsilon_greedy_action(state, epsilon):
+def select_epsilon_greedy_action(state, epsilon, randprob):
   """Take random action with probability epsilon, else take best action."""
   result = tf.random.uniform((1,))
   if result < epsilon:
-    if result < threshold:
-      return env.action_space.sample() #random
-    else:
+    # if np.random.choice(list(range(randprob))) == 0:
+    #   return env.action_space.sample() #random
+    # else:
       return simple_control(state)
   else:
     state_in = tf.expand_dims(state, axis=0) #expanding the state dims along the first axis
     return tf.argmax(main_nn(state_in)[0]).numpy() # Greedy action for state.
   
 @tf.function
-def train_step(states, actions, rewards, next_states, dones):
+def train_step(states, actions, rewards, next_states, dones, discount):
   """Perform a training iteration on a batch of data sampled from the experience
   replay buffer."""
   # Calculate targets.
@@ -130,52 +127,70 @@ def train_step(states, actions, rewards, next_states, dones):
   optimizer.apply_gradients(zip(grads, main_nn.trainable_variables))
   return loss
 
-# Hyperparameters.
-num_episodes = 2000
-epsilon = 1.0
-batch_size = 32
-discount = 0.99
-negrew=-3 #large negative reward. Can be tuned
-threshold=0.2 #Hyperparameter for taking random action. Can be tuned
-buffer = ReplayBuffer(100000)
-cur_frame = 0
+def main():
+  # Hyperparameters.
+  num_episodes = 3000
+  epsilon = 1.0
+  batch_size = 32
+  discount = 0.99
+  randprob=100 #the random action has a 1/c probability to get picked
+  negrew=-3 #large negative reward. Can be tuned
+  freq=1000 #Frequency of updating target neural network i.e. target_nn, with weights from the main_nn
+  buffer = ReplayBuffer(100000)
+  # Start training. Play game once and then train with a batch.
+  last_100_ep_rewards = []
+  cur_frame = 0
+  print(f"Hyperparameter details:\n"
+        f"model number: 10\n"
+        f"num_episodes: {num_episodes}\n"
+        f"discount factor: {discount}\n"
+        # f"Probability of taking random action in training: {1.0/randprob}\n"
+        f"Negative Reward for done=1: {negrew}\n"
+        f"Batch size for training: {batch_size}\n"
+        f"Frequency (in episodes) of updating target_nn: {freq}\n"
+        )
+  for episode in range(num_episodes+1):
+    state = env.reset()
+    ep_reward, done = 0, False
+    while not done: #Each episode continues until the bird crashes i.e. done =1
+      #'done' specifies if the game is done or still in action
+      action = select_epsilon_greedy_action(state, epsilon, randprob)
+      next_state, reward, done, info = env.step(action)
+      #Can we modify the 'reward' and make it a function of 'done'
+      reward=reward+done*negrew #penalizing done=1 (True) i.e. game finished.
+      ep_reward += reward
+      # Save to experience replay.
+      buffer.add(state, action, reward, next_state, done)
+      state = next_state
+      cur_frame += 1
 
-# Start training. Play game once and then train with a batch.
-last_100_ep_rewards = []
-for episode in range(num_episodes+1):
-  state = env.reset()
-  ep_reward, done = 0, False
-  while not done:
-    #'done' specifies if the game is done or still in action
-    action = select_epsilon_greedy_action(state, epsilon)
-    next_state, reward, done, info = env.step(action)
-    #Can we modify the 'reward' and make it a function of 'done'
-    reward=reward+done*negrew #penalizing done=1 (True) i.e. game finished.
-    ep_reward += reward
-    # Save to experience replay.
-    buffer.add(state, action, reward, next_state, done)
-    state = next_state
-    cur_frame += 1
-    # Copy main_nn weights to target_nn at multiples of 2000.
-    if cur_frame % 1000 == 0:
-      target_nn.set_weights(main_nn.get_weights())
+      # Copy main_nn weights to target_nn at multiples of freq.
+      if cur_frame % freq == 0:
+        target_nn.set_weights(main_nn.get_weights())
 
-    # Train neural network.
-    if len(buffer) >= batch_size:
-      states, actions, rewards, next_states, dones = buffer.sample(batch_size)
-      loss = train_step(states, actions, rewards, next_states, dones)
+      # Train neural network.
+      if len(buffer) >= batch_size:
+        states, actions, rewards, next_states, dones = buffer.sample(batch_size)
+        loss = train_step(states, actions, rewards, next_states, dones, discount)
+    
+    if episode < num_episodes and epsilon > 0.1:
+      epsilon -= 1/num_episodes
+
+    # Once the length of last_... rewards reaches 100 it starts removing the oldest reward everytime a new reward comes in
+    if len(last_100_ep_rewards) == 100:
+      last_100_ep_rewards = last_100_ep_rewards[1:]
+    last_100_ep_rewards.append(ep_reward)
+      
+    if episode % 50 == 0:
+      print(f'Episode {episode}/{num_episodes}. Epsilon: {epsilon:.3f}. '
+            f'Mean reward for last 100 episodes: {np.mean(last_100_ep_rewards):.3f}')
+  main_nn.save(save_path)
+  env.close()
+
+if __name__ == "__main__":
+  start_time = time.time()
+  main()
+  end_time = time.time()
+  elapsed_time = end_time - start_time
+  print("Elapsed time for training: ", elapsed_time, " seconds")
   
-  if episode < num_episodes and epsilon > 0.1:
-    epsilon -= 1/num_episodes
-
-  # Once the length of last_... rewards reaches 100 it starts removing the oldest reward everytime a new reward comes in
-  if len(last_100_ep_rewards) == 100:
-    last_100_ep_rewards = last_100_ep_rewards[1:]
-  last_100_ep_rewards.append(ep_reward)
-    
-  if episode % 50 == 0:
-    print(f'Episode {episode}/{num_episodes}. Epsilon: {epsilon:.3f}. '
-          f'Reward in last 100 episodes: {np.mean(last_100_ep_rewards):.3f}')
-    
-main_nn.save(save_path)
-env.close()
