@@ -1,4 +1,8 @@
 import gym
+
+import sys
+sys.path.insert(0, '~/AA203/AA203Project/flappy_bird_gym')
+
 import flappy_bird_gym
 from gym.wrappers import Monitor
 from collections import deque
@@ -11,10 +15,12 @@ import time
 # import io
 # import base64
 import os
-save_path = os.path.expanduser('~/AA203/AA203Project/tests/model11')
+save_path = os.path.expanduser('~/AA203/AA203Project/tests/model13')
 
 # Load gym environment and get action and state spaces.
 env = flappy_bird_gym.make("FlappyBird-v0")
+# state=env.reset()
+# print(state)
 num_features = env.observation_space.shape[0]
 num_actions = env.action_space.n
 print('Number of state features: {}'.format(num_features))
@@ -97,7 +103,7 @@ def simple_control(obs):
       action = 0  
   return action
 
-def select_epsilon_greedy_action(state, epsilon, randprob):
+def select_epsilon_greedy_action(state, epsilon):
   """Take random action with probability epsilon, else take best action."""
   result = tf.random.uniform((1,))
   if result < epsilon:
@@ -133,15 +139,15 @@ def main():
   epsilon = 1.0
   batch_size = 32
   discount = 0.99
-  randprob=100 #the random action has a 1/c probability to get picked
-  negrew=-3 #large negative reward. Can be tuned
+  # randprob=100 #the random action has a 1/c probability to get picked
+  negrew=-0 #large negative reward. Can be tuned
   freq=1000 #Frequency of updating target neural network i.e. target_nn, with weights from the main_nn
   buffer = ReplayBuffer(100000)
   # Start training. Play game once and then train with a batch.
   last_100_ep_rewards = []
   cur_frame = 0
   print(f"Hyperparameter details:\n"
-        f"model number: 10\n"
+        f"model number: 13\n"
         f"num_episodes: {num_episodes}\n"
         f"discount factor: {discount}\n"
         # f"Probability of taking random action in training: {1.0/randprob}\n"
@@ -154,10 +160,10 @@ def main():
     ep_reward, done = 0, False
     while not done: #Each episode continues until the bird crashes i.e. done =1
       #'done' specifies if the game is done or still in action
-      action = select_epsilon_greedy_action(state, epsilon, randprob)
+      action = select_epsilon_greedy_action(state, epsilon)
       next_state, reward, done, info = env.step(action)
       #Can we modify the 'reward' and make it a function of 'done'
-      reward=reward+done*negrew #penalizing done=1 (True) i.e. game finished.
+      reward=reward+done*negrew+(1-np.abs(next_state[1])) #penalizing done=1 (True) i.e. game finished.
       ep_reward += reward
       # Save to experience replay.
       buffer.add(state, action, reward, next_state, done)
